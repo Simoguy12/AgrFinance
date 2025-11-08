@@ -1,37 +1,76 @@
-import { type User, type InsertUser } from "@shared/schema";
+import { type Client, type InsertClient } from "@shared/schema";
 import { randomUUID } from "crypto";
 
-// modify the interface with any CRUD methods
-// you might need
-
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getAllClients(): Promise<Client[]>;
+  getClientsByType(type: string): Promise<Client[]>;
+  getClientsByStatus(status: string): Promise<Client[]>;
+  getClient(id: string): Promise<Client | undefined>;
+  createClient(client: InsertClient): Promise<Client>;
+  updateClient(id: string, updates: Partial<Client>): Promise<Client | undefined>;
+  deleteClient(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
-  private users: Map<string, User>;
+  private clients: Map<string, Client>;
 
   constructor() {
-    this.users = new Map();
+    this.clients = new Map();
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async getAllClients(): Promise<Client[]> {
+    return Array.from(this.clients.values());
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+  async getClientsByType(type: string): Promise<Client[]> {
+    return Array.from(this.clients.values()).filter((c) => c.type === type);
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
+  async getClientsByStatus(status: string): Promise<Client[]> {
+    return Array.from(this.clients.values()).filter((c) => c.status === status);
+  }
+
+  async getClient(id: string): Promise<Client | undefined> {
+    return this.clients.get(id);
+  }
+
+  async createClient(insertClient: InsertClient): Promise<Client> {
     const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+    const now = new Date();
+    const client: Client = {
+      ...insertClient,
+      id,
+      status: insertClient.status || "active",
+      createdAt: now,
+      updatedAt: now,
+      adresse: insertClient.adresse || null,
+      nombreCompte: insertClient.nombreCompte || null,
+      montantTotal: insertClient.montantTotal || null,
+      montantAvecInteret: insertClient.montantAvecInteret || null,
+      montant: insertClient.montant || null,
+      garantie: insertClient.garantie || null,
+      echeance: insertClient.echeance || null,
+      dateCreation: insertClient.dateCreation || null,
+    };
+    this.clients.set(id, client);
+    return client;
+  }
+
+  async updateClient(id: string, updates: Partial<Client>): Promise<Client | undefined> {
+    const client = this.clients.get(id);
+    if (!client) return undefined;
+
+    const updatedClient: Client = {
+      ...client,
+      ...updates,
+      updatedAt: new Date(),
+    };
+    this.clients.set(id, updatedClient);
+    return updatedClient;
+  }
+
+  async deleteClient(id: string): Promise<boolean> {
+    return this.clients.delete(id);
   }
 }
 

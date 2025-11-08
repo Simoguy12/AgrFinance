@@ -1,11 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Search, CheckCircle2, AlertTriangle } from "lucide-react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface Client {
+  id: string;
   codeCompte: string;
   nom: string;
   prenom: string;
@@ -13,66 +16,60 @@ interface Client {
   status: string;
   montantAvecInteret?: number;
   montantTotal?: number;
-  nombreCompte?: string;
-  createdAt: string;
+  nombreCompte?: number;
 }
 
 export default function Credit() {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
-  const [clients, setClients] = useState<Client[]>([]);
   const { toast } = useToast();
 
-  const loadClients = () => {
-    const stored = localStorage.getItem("clients");
-    if (stored) {
-      const allClients = JSON.parse(stored);
-      const creditClients = allClients.filter(
-        (c: Client) => c.type === "credit" && c.status === "active"
-      );
-      setClients(creditClients);
-    }
-  };
+  const { data: clients = [], isLoading } = useQuery<Client[]>({
+    queryKey: ["/api/clients"],
+  });
 
-  useEffect(() => {
-    loadClients();
-    const interval = setInterval(loadClients, 1000);
-    return () => clearInterval(interval);
-  }, []);
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Client> }) => {
+      return apiRequest("PATCH", `/api/clients/${id}`, updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+    },
+  });
 
   const handleSolder = (client: Client) => {
-    const stored = localStorage.getItem("clients");
-    if (stored) {
-      const allClients = JSON.parse(stored);
-      const updated = allClients.map((c: Client) =>
-        c.codeCompte === client.codeCompte ? { ...c, status: "settled" } : c
-      );
-      localStorage.setItem("clients", JSON.stringify(updated));
-      loadClients();
-      toast({
-        title: "Compte soldé",
-        description: `Le compte de ${client.prenom} ${client.nom} a été soldé.`,
-      });
-    }
+    updateMutation.mutate(
+      { id: client.id, updates: { status: "settled" } },
+      {
+        onSuccess: () => {
+          toast({
+            title: "Compte soldé",
+            description: `Le compte de ${client.prenom} ${client.nom} a été soldé.`,
+          });
+        },
+      }
+    );
   };
 
   const handleContentieux = (client: Client) => {
-    const stored = localStorage.getItem("clients");
-    if (stored) {
-      const allClients = JSON.parse(stored);
-      const updated = allClients.map((c: Client) =>
-        c.codeCompte === client.codeCompte ? { ...c, status: "litigation" } : c
-      );
-      localStorage.setItem("clients", JSON.stringify(updated));
-      loadClients();
-      toast({
-        title: "Mis en contentieux",
-        description: `Le compte de ${client.prenom} ${client.nom} est maintenant en contentieux.`,
-      });
-    }
+    updateMutation.mutate(
+      { id: client.id, updates: { status: "litigation" } },
+      {
+        onSuccess: () => {
+          toast({
+            title: "Mis en contentieux",
+            description: `Le compte de ${client.prenom} ${client.nom} est maintenant en contentieux.`,
+          });
+        },
+      }
+    );
   };
 
-  const filteredClients = clients.filter(
+  const creditClients = clients.filter(
+    (c) => c.type === "credit" && c.status === "active"
+  );
+
+  const filteredClients = creditClients.filter(
     (client) =>
       client.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
       client.prenom.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -109,68 +106,76 @@ export default function Credit() {
             />
           </div>
 
-          <div className="space-y-3">
-            {filteredClients.map((client) => (
-              <div
-                key={client.codeCompte}
-                className="bg-card border border-card-border rounded-lg p-4"
-                data-testid={`client-${client.codeCompte}`}
-              >
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-base font-medium text-foreground">
-                        {client.prenom} {client.nom}
-                      </h3>
-                      <p className="text-sm font-mono text-muted-foreground mt-0.5">
-                        {client.codeCompte}
-                      </p>
-                      {client.nombreCompte && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {client.nombreCompte} comptes
+          {isLoading ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">Chargement...</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredClients.map((client) => (
+                <div
+                  key={client.codeCompte}
+                  className="bg-card border border-card-border rounded-lg p-4"
+                  data-testid={`client-${client.codeCompte}`}
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-base font-medium text-foreground">
+                          {client.prenom} {client.nom}
+                        </h3>
+                        <p className="text-sm font-mono text-muted-foreground mt-0.5">
+                          {client.codeCompte}
                         </p>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <p className="text-base font-medium font-mono text-foreground">
-                        {client.montantAvecInteret?.toLocaleString('fr-FR') || 0} FCFA
-                      </p>
-                      {client.montantTotal && (
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Base: {client.montantTotal.toLocaleString('fr-FR')} FCFA
+                        {client.nombreCompte && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {client.nombreCompte} comptes
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className="text-base font-medium font-mono text-foreground">
+                          {client.montantAvecInteret?.toLocaleString('fr-FR') || 0} FCFA
                         </p>
-                      )}
+                        {client.montantTotal && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Base: {client.montantTotal.toLocaleString('fr-FR')} FCFA
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleSolder(client)}
-                      className="flex-1"
-                      data-testid={`button-solder-${client.codeCompte}`}
-                    >
-                      <CheckCircle2 className="w-4 h-4 mr-1" />
-                      Solder
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleContentieux(client)}
-                      className="flex-1"
-                      data-testid={`button-contentieux-${client.codeCompte}`}
-                    >
-                      <AlertTriangle className="w-4 h-4 mr-1" />
-                      Contentieux
-                    </Button>
+                    
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleSolder(client)}
+                        disabled={updateMutation.isPending}
+                        className="flex-1"
+                        data-testid={`button-solder-${client.codeCompte}`}
+                      >
+                        <CheckCircle2 className="w-4 h-4 mr-1" />
+                        Solder
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleContentieux(client)}
+                        disabled={updateMutation.isPending}
+                        className="flex-1"
+                        data-testid={`button-contentieux-${client.codeCompte}`}
+                      >
+                        <AlertTriangle className="w-4 h-4 mr-1" />
+                        Contentieux
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
-          {filteredClients.length === 0 && (
+          {!isLoading && filteredClients.length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">
                 {searchQuery ? "Aucun client trouvé" : "Aucun crédit actif"}

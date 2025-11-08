@@ -1,11 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Search } from "lucide-react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 
 interface Client {
+  id: string;
   codeCompte: string;
   nom: string;
   prenom: string;
@@ -13,32 +15,19 @@ interface Client {
   status: string;
   montantAvecInteret?: number;
   montantTotal?: number;
-  createdAt: string;
 }
 
 export default function Contencieux() {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
-  const [clients, setClients] = useState<Client[]>([]);
 
-  const loadClients = () => {
-    const stored = localStorage.getItem("clients");
-    if (stored) {
-      const allClients = JSON.parse(stored);
-      const litigationClients = allClients.filter(
-        (c: Client) => c.status === "litigation"
-      );
-      setClients(litigationClients);
-    }
-  };
+  const { data: clients = [], isLoading } = useQuery<Client[]>({
+    queryKey: ["/api/clients"],
+  });
 
-  useEffect(() => {
-    loadClients();
-    const interval = setInterval(loadClients, 1000);
-    return () => clearInterval(interval);
-  }, []);
+  const litigationClients = clients.filter((c) => c.status === "litigation");
 
-  const filteredClients = clients.filter(
+  const filteredClients = litigationClients.filter(
     (client) =>
       client.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
       client.prenom.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -75,41 +64,47 @@ export default function Contencieux() {
             />
           </div>
 
-          <div className="space-y-3">
-            {filteredClients.map((client) => (
-              <div
-                key={client.codeCompte}
-                className="bg-card border border-card-border rounded-lg p-4"
-                data-testid={`client-${client.codeCompte}`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-base font-medium text-foreground">
-                      {client.prenom} {client.nom}
-                    </h3>
-                    <p className="text-sm font-mono text-muted-foreground mt-0.5">
-                      {client.codeCompte}
-                    </p>
-                    <Badge variant="outline" className="mt-2 bg-destructive/10 text-destructive border-destructive/20">
-                      Contentieux
-                    </Badge>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-base font-medium font-mono text-foreground">
-                      {client.montantAvecInteret?.toLocaleString('fr-FR') || 0} FCFA
-                    </p>
-                    {client.montantTotal && (
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Base: {client.montantTotal.toLocaleString('fr-FR')} FCFA
+          {isLoading ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">Chargement...</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredClients.map((client) => (
+                <div
+                  key={client.codeCompte}
+                  className="bg-card border border-card-border rounded-lg p-4"
+                  data-testid={`client-${client.codeCompte}`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base font-medium text-foreground">
+                        {client.prenom} {client.nom}
+                      </h3>
+                      <p className="text-sm font-mono text-muted-foreground mt-0.5">
+                        {client.codeCompte}
                       </p>
-                    )}
+                      <Badge variant="outline" className="mt-2 bg-destructive/10 text-destructive border-destructive/20">
+                        Contentieux
+                      </Badge>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-base font-medium font-mono text-foreground">
+                        {client.montantAvecInteret?.toLocaleString('fr-FR') || 0} FCFA
+                      </p>
+                      {client.montantTotal && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Base: {client.montantTotal.toLocaleString('fr-FR')} FCFA
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
-          {filteredClients.length === 0 && (
+          {!isLoading && filteredClients.length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">
                 {searchQuery ? "Aucun client trouvé" : "Aucun contentieux"}

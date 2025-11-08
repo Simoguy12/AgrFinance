@@ -10,6 +10,9 @@ import { ArrowLeft, CalendarIcon } from "lucide-react";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 const zones = [
   "Marché Total",
@@ -27,6 +30,7 @@ const zones = [
 
 export default function AddCredit() {
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
   const [date, setDate] = useState<Date>();
   const [formData, setFormData] = useState({
     nom: "",
@@ -48,25 +52,46 @@ export default function AddCredit() {
 
   const [codeCompte] = useState(generateCode());
 
+  const createMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return apiRequest("POST", "/api/clients", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      toast({
+        title: "Client créé",
+        description: "Le client a été ajouté avec succès.",
+      });
+      setLocation("/credit");
+    },
+    onError: () => {
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors de la création du client.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    const nombreCompte = parseInt(formData.nombreCompte);
+    const montantTotal = nombreCompte * 30000;
+    const montantAvecInteret = nombreCompte * 35650;
+
     const newClient = {
       ...formData,
       codeCompte,
+      nombreCompte,
+      montantTotal,
+      montantAvecInteret,
       dateCreation: date?.toISOString(),
       type: "credit",
       status: "active",
-      montantTotal: parseInt(formData.nombreCompte) * 30000,
-      montantAvecInteret: parseInt(formData.nombreCompte) * 35650,
-      createdAt: new Date().toISOString(),
     };
 
-    const existing = JSON.parse(localStorage.getItem("clients") || "[]");
-    localStorage.setItem("clients", JSON.stringify([...existing, newClient]));
-    
-    console.log("Client crédit créé:", newClient);
-    setLocation("/credit");
+    createMutation.mutate(newClient);
   };
 
   return (
@@ -143,14 +168,13 @@ export default function AddCredit() {
               value={formData.adresse}
               onChange={(e) => setFormData({ ...formData, adresse: e.target.value })}
               placeholder="Adresse complète"
-              required
               data-testid="input-adresse"
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="zone">Zone</Label>
-            <Select value={formData.zone} onValueChange={(value) => setFormData({ ...formData, zone: value })}>
+            <Select value={formData.zone} onValueChange={(value) => setFormData({ ...formData, zone: value })} required>
               <SelectTrigger id="zone" data-testid="select-zone">
                 <SelectValue placeholder="Sélectionner une zone" />
               </SelectTrigger>
@@ -203,6 +227,7 @@ export default function AddCredit() {
                   variant="outline"
                   className="w-full justify-start text-left font-normal"
                   data-testid="button-date"
+                  type="button"
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {date ? format(date, "PPP", { locale: fr }) : "Sélectionner une date"}
@@ -234,7 +259,7 @@ export default function AddCredit() {
 
           <div className="space-y-2">
             <Label htmlFor="echeance">Échéance</Label>
-            <Select value={formData.echeance} onValueChange={(value) => setFormData({ ...formData, echeance: value })}>
+            <Select value={formData.echeance} onValueChange={(value) => setFormData({ ...formData, echeance: value })} required>
               <SelectTrigger id="echeance" data-testid="select-echeance">
                 <SelectValue placeholder="Sélectionner une échéance" />
               </SelectTrigger>
@@ -246,8 +271,8 @@ export default function AddCredit() {
             </Select>
           </div>
 
-          <Button type="submit" className="w-full" data-testid="button-submit">
-            Enregistrer le crédit
+          <Button type="submit" className="w-full" disabled={createMutation.isPending} data-testid="button-submit">
+            {createMutation.isPending ? "Enregistrement..." : "Enregistrer le crédit"}
           </Button>
         </form>
       </main>

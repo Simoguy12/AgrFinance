@@ -1,11 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Search } from "lucide-react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 
 interface Client {
+  id: string;
   codeCompte: string;
   nom: string;
   prenom: string;
@@ -14,36 +16,23 @@ interface Client {
   montantAvecInteret?: number;
   montantTotal?: number;
   montant?: number;
-  createdAt: string;
 }
 
 export default function Solde() {
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<"credit" | "epargne">("credit");
   const [searchQuery, setSearchQuery] = useState("");
-  const [clients, setClients] = useState<Client[]>([]);
 
-  const loadClients = () => {
-    const stored = localStorage.getItem("clients");
-    if (stored) {
-      const allClients = JSON.parse(stored);
-      const settledClients = allClients.filter(
-        (c: Client) => c.status === "settled"
-      );
-      setClients(settledClients);
-    }
-  };
+  const { data: clients = [], isLoading } = useQuery<Client[]>({
+    queryKey: ["/api/clients"],
+  });
 
-  useEffect(() => {
-    loadClients();
-    const interval = setInterval(loadClients, 1000);
-    return () => clearInterval(interval);
-  }, []);
+  const settledClients = clients.filter((c) => c.status === "settled");
 
   const currentData =
     activeTab === "credit"
-      ? clients.filter((c) => c.type === "credit")
-      : clients.filter((c) => c.type === "carte-pointage" || c.type === "compte-courant");
+      ? settledClients.filter((c) => c.type === "credit")
+      : settledClients.filter((c) => c.type === "carte-pointage" || c.type === "compte-courant");
 
   const filteredData = currentData.filter(
     (item) =>
@@ -108,36 +97,42 @@ export default function Solde() {
             />
           </div>
 
-          <div className="space-y-3">
-            {filteredData.map((client) => (
-              <div
-                key={client.codeCompte}
-                className="bg-card border border-card-border rounded-lg p-4"
-                data-testid={`client-${client.codeCompte}`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-base font-medium text-foreground">
-                      {client.prenom} {client.nom}
-                    </h3>
-                    <p className="text-sm font-mono text-muted-foreground mt-0.5">
-                      {client.codeCompte}
-                    </p>
-                    <Badge variant="outline" className="mt-2 bg-chart-2/10 text-chart-2 border-chart-2/20">
-                      Soldé
-                    </Badge>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-base font-medium font-mono text-foreground">
-                      {(client.montantAvecInteret || client.montant || 0).toLocaleString('fr-FR')} FCFA
-                    </p>
+          {isLoading ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">Chargement...</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredData.map((client) => (
+                <div
+                  key={client.codeCompte}
+                  className="bg-card border border-card-border rounded-lg p-4"
+                  data-testid={`client-${client.codeCompte}`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base font-medium text-foreground">
+                        {client.prenom} {client.nom}
+                      </h3>
+                      <p className="text-sm font-mono text-muted-foreground mt-0.5">
+                        {client.codeCompte}
+                      </p>
+                      <Badge variant="outline" className="mt-2 bg-chart-2/10 text-chart-2 border-chart-2/20">
+                        Soldé
+                      </Badge>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-base font-medium font-mono text-foreground">
+                        {(client.montantAvecInteret || client.montant || 0).toLocaleString('fr-FR')} FCFA
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
-          {filteredData.length === 0 && (
+          {!isLoading && filteredData.length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">
                 {searchQuery ? "Aucune donnée trouvée" : "Aucun compte soldé"}

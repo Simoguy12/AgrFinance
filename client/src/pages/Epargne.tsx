@@ -1,63 +1,61 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Search, CheckCircle2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface Client {
+  id: string;
   codeCompte: string;
   nom: string;
   prenom: string;
   type: string;
   status: string;
   montant?: number;
-  createdAt: string;
 }
 
 export default function Epargne() {
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<"carte-pointage" | "compte-courant">("carte-pointage");
   const [searchQuery, setSearchQuery] = useState("");
-  const [clients, setClients] = useState<Client[]>([]);
   const { toast } = useToast();
 
-  const loadClients = () => {
-    const stored = localStorage.getItem("clients");
-    if (stored) {
-      const allClients = JSON.parse(stored);
-      const epargneClients = allClients.filter(
-        (c: Client) =>
-          (c.type === "carte-pointage" || c.type === "compte-courant") &&
-          c.status === "active"
-      );
-      setClients(epargneClients);
-    }
-  };
+  const { data: clients = [], isLoading } = useQuery<Client[]>({
+    queryKey: ["/api/clients"],
+  });
 
-  useEffect(() => {
-    loadClients();
-    const interval = setInterval(loadClients, 1000);
-    return () => clearInterval(interval);
-  }, []);
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Client> }) => {
+      return apiRequest("PATCH", `/api/clients/${id}`, updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+    },
+  });
 
   const handleSolder = (client: Client) => {
-    const stored = localStorage.getItem("clients");
-    if (stored) {
-      const allClients = JSON.parse(stored);
-      const updated = allClients.map((c: Client) =>
-        c.codeCompte === client.codeCompte ? { ...c, status: "settled" } : c
-      );
-      localStorage.setItem("clients", JSON.stringify(updated));
-      loadClients();
-      toast({
-        title: "Compte soldé",
-        description: `Le compte de ${client.prenom} ${client.nom} a été soldé.`,
-      });
-    }
+    updateMutation.mutate(
+      { id: client.id, updates: { status: "settled" } },
+      {
+        onSuccess: () => {
+          toast({
+            title: "Compte soldé",
+            description: `Le compte de ${client.prenom} ${client.nom} a été soldé.`,
+          });
+        },
+      }
+    );
   };
 
-  const currentData = clients.filter((c) => c.type === activeTab);
+  const epargneClients = clients.filter(
+    (c) => (c.type === "carte-pointage" || c.type === "compte-courant") && c.status === "active"
+  );
+
+  const currentData = epargneClients.filter((c) => c.type === activeTab);
+
   const filteredData = currentData.filter(
     (item) =>
       item.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -121,46 +119,53 @@ export default function Epargne() {
             />
           </div>
 
-          <div className="space-y-3">
-            {filteredData.map((client) => (
-              <div
-                key={client.codeCompte}
-                className="bg-card border border-card-border rounded-lg p-4"
-                data-testid={`client-${client.codeCompte}`}
-              >
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-base font-medium text-foreground">
-                        {client.prenom} {client.nom}
-                      </h3>
-                      <p className="text-sm font-mono text-muted-foreground mt-0.5">
-                        {client.codeCompte}
-                      </p>
+          {isLoading ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">Chargement...</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredData.map((client) => (
+                <div
+                  key={client.codeCompte}
+                  className="bg-card border border-card-border rounded-lg p-4"
+                  data-testid={`client-${client.codeCompte}`}
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-base font-medium text-foreground">
+                          {client.prenom} {client.nom}
+                        </h3>
+                        <p className="text-sm font-mono text-muted-foreground mt-0.5">
+                          {client.codeCompte}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-base font-medium font-mono text-foreground">
+                          {client.montant?.toLocaleString('fr-FR') || 0} FCFA
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-base font-medium font-mono text-foreground">
-                        {client.montant?.toLocaleString('fr-FR') || 0} FCFA
-                      </p>
-                    </div>
+                    
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleSolder(client)}
+                      disabled={updateMutation.isPending}
+                      className="w-full"
+                      data-testid={`button-solder-${client.codeCompte}`}
+                    >
+                      <CheckCircle2 className="w-4 h-4 mr-1" />
+                      Solder le compte
+                    </Button>
                   </div>
-                  
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleSolder(client)}
-                    className="w-full"
-                    data-testid={`button-solder-${client.codeCompte}`}
-                  >
-                    <CheckCircle2 className="w-4 h-4 mr-1" />
-                    Solder le compte
-                  </Button>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
-          {filteredData.length === 0 && (
+          {!isLoading && filteredData.length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">
                 {searchQuery ? "Aucune donnée trouvée" : "Aucune épargne active"}

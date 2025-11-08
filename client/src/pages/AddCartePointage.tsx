@@ -9,6 +9,9 @@ import { ArrowLeft, CalendarIcon } from "lucide-react";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 const zones = [
   "Marché Total",
@@ -26,6 +29,7 @@ const zones = [
 
 export default function AddCartePointage() {
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
   const [date, setDate] = useState<Date>();
   const [formData, setFormData] = useState({
     nom: "",
@@ -44,24 +48,40 @@ export default function AddCartePointage() {
 
   const [codeCompte] = useState(generateCode());
 
+  const createMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return apiRequest("POST", "/api/clients", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      toast({
+        title: "Client créé",
+        description: "La carte de pointage a été ajoutée avec succès.",
+      });
+      setLocation("/epargne");
+    },
+    onError: () => {
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors de la création de la carte de pointage.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     const newClient = {
       ...formData,
       codeCompte,
+      montant: parseInt(formData.montant),
       dateCreation: date?.toISOString(),
       type: "carte-pointage",
       status: "active",
-      montant: parseInt(formData.montant),
-      createdAt: new Date().toISOString(),
     };
 
-    const existing = JSON.parse(localStorage.getItem("clients") || "[]");
-    localStorage.setItem("clients", JSON.stringify([...existing, newClient]));
-    
-    console.log("Client carte de pointage créé:", newClient);
-    setLocation("/epargne");
+    createMutation.mutate(newClient);
   };
 
   return (
@@ -133,7 +153,7 @@ export default function AddCartePointage() {
 
           <div className="space-y-2">
             <Label htmlFor="zone">Zone</Label>
-            <Select value={formData.zone} onValueChange={(value) => setFormData({ ...formData, zone: value })}>
+            <Select value={formData.zone} onValueChange={(value) => setFormData({ ...formData, zone: value })} required>
               <SelectTrigger id="zone" data-testid="select-zone">
                 <SelectValue placeholder="Sélectionner une zone" />
               </SelectTrigger>
@@ -181,6 +201,7 @@ export default function AddCartePointage() {
                   variant="outline"
                   className="w-full justify-start text-left font-normal"
                   data-testid="button-date"
+                  type="button"
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {date ? format(date, "PPP", { locale: fr }) : "Sélectionner une date"}
@@ -198,8 +219,8 @@ export default function AddCartePointage() {
             </Popover>
           </div>
 
-          <Button type="submit" className="w-full" data-testid="button-submit">
-            Enregistrer la carte de pointage
+          <Button type="submit" className="w-full" disabled={createMutation.isPending} data-testid="button-submit">
+            {createMutation.isPending ? "Enregistrement..." : "Enregistrer la carte de pointage"}
           </Button>
         </form>
       </main>
