@@ -6,6 +6,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import BottomNavigation from "@/components/BottomNavigation";
 import Home from "@/pages/Home";
 import Add from "@/pages/Add";
+import AddCredit from "@/pages/AddCredit";
+import AddCompteCourant from "@/pages/AddCompteCourant";
+import AddCartePointage from "@/pages/AddCartePointage";
 import Profile from "@/pages/Profile";
 import Credit from "@/pages/Credit";
 import Epargne from "@/pages/Epargne";
@@ -19,6 +22,9 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/add" component={Add} />
+      <Route path="/add/credit" component={AddCredit} />
+      <Route path="/add/compte-courant" component={AddCompteCourant} />
+      <Route path="/add/carte-pointage" component={AddCartePointage} />
       <Route path="/profile" component={Profile} />
       <Route path="/credit" component={Credit} />
       <Route path="/epargne" component={Epargne} />

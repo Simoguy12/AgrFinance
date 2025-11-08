@@ -1,31 +1,68 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import ClientListItem from "@/components/ClientListItem";
-import { ArrowLeft, Search } from "lucide-react";
+import { ArrowLeft, Search, CheckCircle2 } from "lucide-react";
 import { useLocation } from "wouter";
+import { useToast } from "@/hooks/use-toast";
 
-const mockCartePointage = [
-  { name: "Sophie Mensah", accountNumber: "CP-2024-001", status: "active" as const, amount: 50000, lastActivity: "Hier" },
-  { name: "Ibrahim Koné", accountNumber: "CP-2024-002", status: "active" as const, amount: 75000, lastActivity: "Il y a 2j" },
-];
-
-const mockCompteCourant = [
-  { name: "Aïcha Camara", accountNumber: "CC-2024-001", status: "active" as const, amount: 120000, lastActivity: "Aujourd'hui" },
-  { name: "Moussa Sanogo", accountNumber: "CC-2024-002", status: "active" as const, amount: 95000, lastActivity: "Il y a 1h" },
-  { name: "Aminata Touré", accountNumber: "CC-2024-003", status: "active" as const, amount: 140000, lastActivity: "Il y a 3h" },
-];
+interface Client {
+  codeCompte: string;
+  nom: string;
+  prenom: string;
+  type: string;
+  status: string;
+  montant?: number;
+  createdAt: string;
+}
 
 export default function Epargne() {
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<"carte-pointage" | "compte-courant">("carte-pointage");
   const [searchQuery, setSearchQuery] = useState("");
+  const [clients, setClients] = useState<Client[]>([]);
+  const { toast } = useToast();
 
-  const currentData = activeTab === "carte-pointage" ? mockCartePointage : mockCompteCourant;
+  const loadClients = () => {
+    const stored = localStorage.getItem("clients");
+    if (stored) {
+      const allClients = JSON.parse(stored);
+      const epargneClients = allClients.filter(
+        (c: Client) =>
+          (c.type === "carte-pointage" || c.type === "compte-courant") &&
+          c.status === "active"
+      );
+      setClients(epargneClients);
+    }
+  };
+
+  useEffect(() => {
+    loadClients();
+    const interval = setInterval(loadClients, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleSolder = (client: Client) => {
+    const stored = localStorage.getItem("clients");
+    if (stored) {
+      const allClients = JSON.parse(stored);
+      const updated = allClients.map((c: Client) =>
+        c.codeCompte === client.codeCompte ? { ...c, status: "settled" } : c
+      );
+      localStorage.setItem("clients", JSON.stringify(updated));
+      loadClients();
+      toast({
+        title: "Compte soldé",
+        description: `Le compte de ${client.prenom} ${client.nom} a été soldé.`,
+      });
+    }
+  };
+
+  const currentData = clients.filter((c) => c.type === activeTab);
   const filteredData = currentData.filter(
     (item) =>
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.accountNumber.toLowerCase().includes(searchQuery.toLowerCase())
+      item.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.prenom.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.codeCompte.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -84,19 +121,50 @@ export default function Epargne() {
             />
           </div>
 
-          <div className="space-y-2">
-            {filteredData.map((item) => (
-              <ClientListItem
-                key={item.accountNumber}
-                {...item}
-                onClick={() => console.log(`Item ${item.accountNumber} clicked`)}
-              />
+          <div className="space-y-3">
+            {filteredData.map((client) => (
+              <div
+                key={client.codeCompte}
+                className="bg-card border border-card-border rounded-lg p-4"
+                data-testid={`client-${client.codeCompte}`}
+              >
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base font-medium text-foreground">
+                        {client.prenom} {client.nom}
+                      </h3>
+                      <p className="text-sm font-mono text-muted-foreground mt-0.5">
+                        {client.codeCompte}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-base font-medium font-mono text-foreground">
+                        {client.montant?.toLocaleString('fr-FR') || 0} FCFA
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleSolder(client)}
+                    className="w-full"
+                    data-testid={`button-solder-${client.codeCompte}`}
+                  >
+                    <CheckCircle2 className="w-4 h-4 mr-1" />
+                    Solder le compte
+                  </Button>
+                </div>
+              </div>
             ))}
           </div>
 
           {filteredData.length === 0 && (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">Aucune donnée trouvée</p>
+              <p className="text-muted-foreground">
+                {searchQuery ? "Aucune donnée trouvée" : "Aucune épargne active"}
+              </p>
             </div>
           )}
         </div>

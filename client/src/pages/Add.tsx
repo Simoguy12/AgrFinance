@@ -1,28 +1,9 @@
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, CreditCard, Wallet, ClipboardCheck } from "lucide-react";
 import { useLocation } from "wouter";
-
-type FormType = "credit" | "compte-courant" | "carte-pointage";
 
 export default function Add() {
   const [, setLocation] = useLocation();
-  const [formType, setFormType] = useState<FormType>("credit");
-  const [formData, setFormData] = useState({
-    name: "",
-    accountNumber: "",
-    amount: "",
-    notes: "",
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log("Form submitted:", { type: formType, ...formData });
-    setFormData({ name: "", accountNumber: "", amount: "", notes: "" });
-  };
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -40,91 +21,34 @@ export default function Add() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-6">
-        <div className="space-y-6">
-          <div className="flex gap-2">
-            <Button
-              variant={formType === "credit" ? "default" : "outline"}
-              onClick={() => setFormType("credit")}
-              className="flex-1"
-              data-testid="button-type-credit"
-            >
-              Crédit
-            </Button>
-            <Button
-              variant={formType === "compte-courant" ? "default" : "outline"}
-              onClick={() => setFormType("compte-courant")}
-              className="flex-1"
-              data-testid="button-type-compte-courant"
-            >
-              Compte courant
-            </Button>
-            <Button
-              variant={formType === "carte-pointage" ? "default" : "outline"}
-              onClick={() => setFormType("carte-pointage")}
-              className="flex-1"
-              data-testid="button-type-carte-pointage"
-            >
-              Carte de pointage
-            </Button>
-          </div>
+      <main className="max-w-2xl mx-auto px-4 py-8">
+        <div className="space-y-4">
+          <button
+            onClick={() => setLocation("/add/credit")}
+            className="w-full bg-card border border-card-border rounded-xl p-8 flex flex-col items-center justify-center gap-4 hover-elevate active-elevate-2"
+            data-testid="button-add-credit"
+          >
+            <CreditCard className="w-16 h-16 text-primary" strokeWidth={2} />
+            <span className="text-2xl font-semibold text-foreground">Crédit</span>
+          </button>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nom du client</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Entrez le nom complet"
-                required
-                data-testid="input-name"
-              />
-            </div>
+          <button
+            onClick={() => setLocation("/add/compte-courant")}
+            className="w-full bg-card border border-card-border rounded-xl p-8 flex flex-col items-center justify-center gap-4 hover-elevate active-elevate-2"
+            data-testid="button-add-compte-courant"
+          >
+            <Wallet className="w-16 h-16 text-primary" strokeWidth={2} />
+            <span className="text-2xl font-semibold text-foreground">Compte courant</span>
+          </button>
 
-            <div className="space-y-2">
-              <Label htmlFor="accountNumber">Numéro de compte</Label>
-              <Input
-                id="accountNumber"
-                value={formData.accountNumber}
-                onChange={(e) => setFormData({ ...formData, accountNumber: e.target.value })}
-                placeholder="Ex: CR-2024-001"
-                className="font-mono"
-                required
-                data-testid="input-account-number"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="amount">Montant (FCFA)</Label>
-              <Input
-                id="amount"
-                type="number"
-                value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                placeholder="0"
-                className="font-mono"
-                required
-                data-testid="input-amount"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notes</Label>
-              <Textarea
-                id="notes"
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Informations supplémentaires..."
-                rows={4}
-                data-testid="input-notes"
-              />
-            </div>
-
-            <Button type="submit" className="w-full" data-testid="button-submit">
-              Enregistrer
-            </Button>
-          </form>
+          <button
+            onClick={() => setLocation("/add/carte-pointage")}
+            className="w-full bg-card border border-card-border rounded-xl p-8 flex flex-col items-center justify-center gap-4 hover-elevate active-elevate-2"
+            data-testid="button-add-carte-pointage"
+          >
+            <ClipboardCheck className="w-16 h-16 text-primary" strokeWidth={2} />
+            <span className="text-2xl font-semibold text-foreground">Carte de pointage</span>
+          </button>
         </div>
       </main>
     </div>

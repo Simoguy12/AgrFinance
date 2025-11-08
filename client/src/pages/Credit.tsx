@@ -1,25 +1,82 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import ClientListItem from "@/components/ClientListItem";
-import { ArrowLeft, Search } from "lucide-react";
+import { ArrowLeft, Search, CheckCircle2, AlertTriangle } from "lucide-react";
 import { useLocation } from "wouter";
+import { useToast } from "@/hooks/use-toast";
 
-const mockClients = [
-  { name: "Marie Kouassi", accountNumber: "CR-2024-001", status: "active" as const, amount: 250000, lastActivity: "Il y a 2h" },
-  { name: "Jean Baptiste", accountNumber: "CR-2024-002", status: "active" as const, amount: 180000, lastActivity: "Hier" },
-  { name: "Fatou Diallo", accountNumber: "CR-2024-003", status: "active" as const, amount: 320000, lastActivity: "Il y a 3h" },
-  { name: "Amadou Traoré", accountNumber: "CR-2024-004", status: "active" as const, amount: 150000, lastActivity: "Aujourd'hui" },
-];
+interface Client {
+  codeCompte: string;
+  nom: string;
+  prenom: string;
+  type: string;
+  status: string;
+  montantAvecInteret?: number;
+  montantTotal?: number;
+  nombreCompte?: string;
+  createdAt: string;
+}
 
 export default function Credit() {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
+  const [clients, setClients] = useState<Client[]>([]);
+  const { toast } = useToast();
 
-  const filteredClients = mockClients.filter(
+  const loadClients = () => {
+    const stored = localStorage.getItem("clients");
+    if (stored) {
+      const allClients = JSON.parse(stored);
+      const creditClients = allClients.filter(
+        (c: Client) => c.type === "credit" && c.status === "active"
+      );
+      setClients(creditClients);
+    }
+  };
+
+  useEffect(() => {
+    loadClients();
+    const interval = setInterval(loadClients, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleSolder = (client: Client) => {
+    const stored = localStorage.getItem("clients");
+    if (stored) {
+      const allClients = JSON.parse(stored);
+      const updated = allClients.map((c: Client) =>
+        c.codeCompte === client.codeCompte ? { ...c, status: "settled" } : c
+      );
+      localStorage.setItem("clients", JSON.stringify(updated));
+      loadClients();
+      toast({
+        title: "Compte soldé",
+        description: `Le compte de ${client.prenom} ${client.nom} a été soldé.`,
+      });
+    }
+  };
+
+  const handleContentieux = (client: Client) => {
+    const stored = localStorage.getItem("clients");
+    if (stored) {
+      const allClients = JSON.parse(stored);
+      const updated = allClients.map((c: Client) =>
+        c.codeCompte === client.codeCompte ? { ...c, status: "litigation" } : c
+      );
+      localStorage.setItem("clients", JSON.stringify(updated));
+      loadClients();
+      toast({
+        title: "Mis en contentieux",
+        description: `Le compte de ${client.prenom} ${client.nom} est maintenant en contentieux.`,
+      });
+    }
+  };
+
+  const filteredClients = clients.filter(
     (client) =>
-      client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      client.accountNumber.toLowerCase().includes(searchQuery.toLowerCase())
+      client.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      client.prenom.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      client.codeCompte.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -52,19 +109,72 @@ export default function Credit() {
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             {filteredClients.map((client) => (
-              <ClientListItem
-                key={client.accountNumber}
-                {...client}
-                onClick={() => console.log(`Client ${client.accountNumber} clicked`)}
-              />
+              <div
+                key={client.codeCompte}
+                className="bg-card border border-card-border rounded-lg p-4"
+                data-testid={`client-${client.codeCompte}`}
+              >
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base font-medium text-foreground">
+                        {client.prenom} {client.nom}
+                      </h3>
+                      <p className="text-sm font-mono text-muted-foreground mt-0.5">
+                        {client.codeCompte}
+                      </p>
+                      {client.nombreCompte && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {client.nombreCompte} comptes
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="text-base font-medium font-mono text-foreground">
+                        {client.montantAvecInteret?.toLocaleString('fr-FR') || 0} FCFA
+                      </p>
+                      {client.montantTotal && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Base: {client.montantTotal.toLocaleString('fr-FR')} FCFA
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleSolder(client)}
+                      className="flex-1"
+                      data-testid={`button-solder-${client.codeCompte}`}
+                    >
+                      <CheckCircle2 className="w-4 h-4 mr-1" />
+                      Solder
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleContentieux(client)}
+                      className="flex-1"
+                      data-testid={`button-contentieux-${client.codeCompte}`}
+                    >
+                      <AlertTriangle className="w-4 h-4 mr-1" />
+                      Contentieux
+                    </Button>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
 
           {filteredClients.length === 0 && (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">Aucun client trouvé</p>
+              <p className="text-muted-foreground">
+                {searchQuery ? "Aucun client trouvé" : "Aucun crédit actif"}
+              </p>
             </div>
           )}
         </div>

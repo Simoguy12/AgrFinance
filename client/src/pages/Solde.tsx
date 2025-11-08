@@ -1,30 +1,55 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import ClientListItem from "@/components/ClientListItem";
+import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Search } from "lucide-react";
 import { useLocation } from "wouter";
 
-const mockCreditSolde = [
-  { name: "Kofi Mensah", accountNumber: "CR-2023-045", status: "settled" as const, amount: 200000, lastActivity: "15 Jan" },
-  { name: "Yao Koffi", accountNumber: "CR-2023-098", status: "settled" as const, amount: 150000, lastActivity: "12 Jan" },
-];
-
-const mockEpargneSolde = [
-  { name: "Awa Diop", accountNumber: "EP-2023-012", status: "settled" as const, amount: 85000, lastActivity: "18 Jan" },
-  { name: "Sekou Touré", accountNumber: "EP-2023-034", status: "settled" as const, amount: 110000, lastActivity: "10 Jan" },
-];
+interface Client {
+  codeCompte: string;
+  nom: string;
+  prenom: string;
+  type: string;
+  status: string;
+  montantAvecInteret?: number;
+  montantTotal?: number;
+  montant?: number;
+  createdAt: string;
+}
 
 export default function Solde() {
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<"credit" | "epargne">("credit");
   const [searchQuery, setSearchQuery] = useState("");
+  const [clients, setClients] = useState<Client[]>([]);
 
-  const currentData = activeTab === "credit" ? mockCreditSolde : mockEpargneSolde;
+  const loadClients = () => {
+    const stored = localStorage.getItem("clients");
+    if (stored) {
+      const allClients = JSON.parse(stored);
+      const settledClients = allClients.filter(
+        (c: Client) => c.status === "settled"
+      );
+      setClients(settledClients);
+    }
+  };
+
+  useEffect(() => {
+    loadClients();
+    const interval = setInterval(loadClients, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const currentData =
+    activeTab === "credit"
+      ? clients.filter((c) => c.type === "credit")
+      : clients.filter((c) => c.type === "carte-pointage" || c.type === "compte-courant");
+
   const filteredData = currentData.filter(
     (item) =>
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.accountNumber.toLowerCase().includes(searchQuery.toLowerCase())
+      item.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.prenom.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.codeCompte.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -83,19 +108,40 @@ export default function Solde() {
             />
           </div>
 
-          <div className="space-y-2">
-            {filteredData.map((item) => (
-              <ClientListItem
-                key={item.accountNumber}
-                {...item}
-                onClick={() => console.log(`Item ${item.accountNumber} clicked`)}
-              />
+          <div className="space-y-3">
+            {filteredData.map((client) => (
+              <div
+                key={client.codeCompte}
+                className="bg-card border border-card-border rounded-lg p-4"
+                data-testid={`client-${client.codeCompte}`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base font-medium text-foreground">
+                      {client.prenom} {client.nom}
+                    </h3>
+                    <p className="text-sm font-mono text-muted-foreground mt-0.5">
+                      {client.codeCompte}
+                    </p>
+                    <Badge variant="outline" className="mt-2 bg-chart-2/10 text-chart-2 border-chart-2/20">
+                      Soldé
+                    </Badge>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-base font-medium font-mono text-foreground">
+                      {(client.montantAvecInteret || client.montant || 0).toLocaleString('fr-FR')} FCFA
+                    </p>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
 
           {filteredData.length === 0 && (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">Aucune donnée trouvée</p>
+              <p className="text-muted-foreground">
+                {searchQuery ? "Aucune donnée trouvée" : "Aucun compte soldé"}
+              </p>
             </div>
           )}
         </div>
