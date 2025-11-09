@@ -16,6 +16,7 @@ import Solde from "@/pages/Solde";
 import Contencieux from "@/pages/Contencieux";
 import Performance from "@/pages/Performance";
 import Corbeille from "@/pages/Corbeille";
+import ClientDetails from "@/pages/ClientDetails";
 
 function Router() {
   return (
@@ -32,6 +33,7 @@ function Router() {
       <Route path="/contencieux" component={Contencieux} />
       <Route path="/performance" component={Performance} />
       <Route path="/corbeille" component={Corbeille} />
+      <Route path="/client/:id" component={ClientDetails} />
     </Switch>
   );
 }
