@@ -25,10 +25,29 @@ export const clients = pgTable("clients", {
   updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
 });
 
-export const insertClientSchema = createInsertSchema(clients).omit({
+const baseInsertSchema = createInsertSchema(clients).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+});
+
+export const insertClientSchema = z.object({
+  codeCompte: z.string(),
+  type: z.string(),
+  status: z.string().optional(),
+  nom: z.string(),
+  prenom: z.string(),
+  telephone: z.string(),
+  activite: z.string(),
+  adresse: z.string().optional(),
+  zone: z.string(),
+  nombreCompte: z.number().optional(),
+  montantTotal: z.number().optional(),
+  montantAvecInteret: z.number().optional(),
+  montant: z.number().optional(),
+  garantie: z.string().optional(),
+  echeance: z.string().optional(),
+  dateCreation: z.string().optional(),
 });
 
 export type InsertClient = z.infer<typeof insertClientSchema>;

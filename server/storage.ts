@@ -38,9 +38,15 @@ export class MemStorage implements IStorage {
     const id = randomUUID();
     const now = new Date();
     const client: Client = {
-      ...insertClient,
       id,
+      codeCompte: insertClient.codeCompte,
+      type: insertClient.type,
       status: insertClient.status || "active",
+      nom: insertClient.nom,
+      prenom: insertClient.prenom,
+      telephone: insertClient.telephone,
+      activite: insertClient.activite,
+      zone: insertClient.zone,
       createdAt: now,
       updatedAt: now,
       adresse: insertClient.adresse || null,
@@ -50,7 +56,7 @@ export class MemStorage implements IStorage {
       montant: insertClient.montant || null,
       garantie: insertClient.garantie || null,
       echeance: insertClient.echeance || null,
-      dateCreation: insertClient.dateCreation || null,
+      dateCreation: insertClient.dateCreation ? new Date(insertClient.dateCreation) : null,
     };
     this.clients.set(id, client);
     return client;
