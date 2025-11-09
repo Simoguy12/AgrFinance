@@ -134,12 +134,25 @@ export default function Epargne() {
                   <div className="space-y-3">
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-base font-medium text-foreground">
-                          {client.prenom} {client.nom}
-                        </h3>
-                        <p className="text-sm font-mono text-muted-foreground mt-0.5">
-                          {client.codeCompte}
-                        </p>
+                        <button
+                          onClick={() => {
+                            // stocker le client sélectionné puis naviguer vers la page de détails
+                            try {
+                              localStorage.setItem("selectedClient", JSON.stringify(client));
+                            } catch (e) {
+                              // ignore
+                            }
+                            setLocation(`/client/${client.id}`);
+                          }}
+                          className="text-left w-full"
+                        >
+                          <h3 className="text-base font-medium text-foreground">
+                            {client.prenom} {client.nom}
+                          </h3>
+                          <p className="text-sm font-mono text-muted-foreground mt-0.5">
+                            {client.codeCompte}
+                          </p>
+                        </button>
                       </div>
                       <div className="text-right">
                         <p className="text-base font-medium font-mono text-foreground">
