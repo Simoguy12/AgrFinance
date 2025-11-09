@@ -12,6 +12,10 @@ export default function CreditClientDetails() {
   const [penalties, setPenalties] = useState<any[]>([]);
   const [showPayments, setShowPayments] = useState(false);
   const [showPenalties, setShowPenalties] = useState(false);
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [showPenaltyForm, setShowPenaltyForm] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [penaltyAmount, setPenaltyAmount] = useState("");
   const [comment, setComment] = useState("");
 
   useEffect(() => {
@@ -51,10 +55,7 @@ export default function CreditClientDetails() {
     setPenalties(arr);
   };
 
-  const handleAddPayment = async () => {
-    const raw = window.prompt("Montant du versement (FCFA)", "0");
-    if (!raw) return;
-    const amount = parseFloat(raw.replace(/\s|,/g, ""));
+  const handleAddPayment = async (amount: number) => {
     if (Number.isNaN(amount) || amount <= 0) return;
 
     // stocker localement
@@ -74,10 +75,7 @@ export default function CreditClientDetails() {
     }
   };
 
-  const handleAddPenalty = () => {
-    const raw = window.prompt("Montant de la pénalité (FCFA)", "0");
-    if (!raw) return;
-    const amount = parseFloat(raw.replace(/\s|,/g, ""));
+  const handleAddPenalty = (amount: number) => {
     if (Number.isNaN(amount) || amount <= 0) return;
     const newPen = { id: Date.now().toString(36), amount, date: new Date().toISOString() };
     persistPenalties([newPen, ...penalties]);
@@ -148,8 +146,56 @@ export default function CreditClientDetails() {
         </div>
 
         <div className="mt-4 flex flex-col gap-2">
-          <button className="bg-blue-500 text-white py-2 rounded" onClick={handleAddPayment}>Effectuer Versement</button>
-          <button className="bg-yellow-500 text-white py-2 rounded" onClick={handleAddPenalty}>Payer la pénalité</button>
+          {!showPaymentForm ? (
+            <button className="bg-blue-500 text-white py-2 rounded" onClick={() => setShowPaymentForm(true)}>Effectuer Versement</button>
+          ) : (
+            <div className="flex gap-2">
+              <input
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+                className="flex-1 p-2 rounded border"
+                placeholder="Montant en FCFA"
+              />
+              <button
+                className="bg-green-600 text-white px-4 rounded"
+                onClick={async () => {
+                  const amt = parseFloat(paymentAmount.replace(/\s|,/g, ""));
+                  await handleAddPayment(amt);
+                  setPaymentAmount("");
+                  setShowPaymentForm(false);
+                }}
+              >
+                Valider
+              </button>
+              <button className="bg-gray-200 px-4 rounded" onClick={() => { setShowPaymentForm(false); setPaymentAmount(""); }}>Annuler</button>
+            </div>
+          )}
+
+          {!showPenaltyForm ? (
+            <button className="bg-yellow-500 text-white py-2 rounded" onClick={() => setShowPenaltyForm(true)}>Payer la pénalité</button>
+          ) : (
+            <div className="flex gap-2">
+              <input
+                value={penaltyAmount}
+                onChange={(e) => setPenaltyAmount(e.target.value)}
+                className="flex-1 p-2 rounded border"
+                placeholder="Montant en FCFA"
+              />
+              <button
+                className="bg-green-600 text-white px-4 rounded"
+                onClick={() => {
+                  const amt = parseFloat(penaltyAmount.replace(/\s|,/g, ""));
+                  handleAddPenalty(amt);
+                  setPenaltyAmount("");
+                  setShowPenaltyForm(false);
+                }}
+              >
+                Valider
+              </button>
+              <button className="bg-gray-200 px-4 rounded" onClick={() => { setShowPenaltyForm(false); setPenaltyAmount(""); }}>Annuler</button>
+            </div>
+          )}
+
           <button className="bg-red-500 text-white py-2 rounded" onClick={handleContentieux}>Contentieux</button>
         </div>
 
