@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Search } from "lucide-react";
 import { useLocation } from "wouter";
+import CreditClientDetails from "@/pages/CreditClientDetails";
 import { useQuery } from "@tanstack/react-query";
 
 interface Client {
@@ -20,6 +21,16 @@ interface Client {
 export default function Contencieux() {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedClient, setSelectedClient] = useState<any | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("selectedClient");
+      if (raw) setSelectedClient(JSON.parse(raw));
+    } catch (e) {
+      setSelectedClient(null);
+    }
+  }, []);
 
   const { data: clients = [], isLoading } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
@@ -64,7 +75,9 @@ export default function Contencieux() {
             />
           </div>
 
-          {isLoading ? (
+          {selectedClient ? (
+            <CreditClientDetails />
+          ) : isLoading ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground">Chargement...</p>
             </div>

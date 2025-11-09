@@ -111,12 +111,20 @@ export default function Solde() {
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-base font-medium text-foreground">
-                        {client.prenom} {client.nom}
-                      </h3>
-                      <p className="text-sm font-mono text-muted-foreground mt-0.5">
-                        {client.codeCompte}
-                      </p>
+                      <button
+                        className="text-left w-full"
+                        onClick={() => {
+                          try { localStorage.setItem('selectedClient', JSON.stringify(client)); } catch (e) {}
+                          setLocation(`/credit/client/${client.id}`);
+                        }}
+                      >
+                        <h3 className="text-base font-medium text-foreground">
+                          {client.prenom} {client.nom}
+                        </h3>
+                        <p className="text-sm font-mono text-muted-foreground mt-0.5">
+                          {client.codeCompte}
+                        </p>
+                      </button>
                       <Badge variant="outline" className="mt-2 bg-chart-2/10 text-chart-2 border-chart-2/20">
                         Soldé
                       </Badge>

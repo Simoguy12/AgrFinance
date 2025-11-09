@@ -82,14 +82,11 @@ export default function CreditClientDetails() {
   };
 
   const handleContentieux = async () => {
+    // navigate to contentieux page for this client, keeping client in localStorage
     try {
-      await apiRequest("PATCH", `/api/clients/${client.id}`, { status: "litigation" });
-      const updated = { ...client, status: "litigation" };
-      localStorage.setItem("selectedClient", JSON.stringify(updated));
-      setClient(updated);
-    } catch (e) {
-      console.error(e);
-    }
+      localStorage.setItem("selectedClient", JSON.stringify(client));
+    } catch (e) {}
+    setLocation("/contencieux");
   };
 
   const handleComment = () => {
@@ -104,6 +101,8 @@ export default function CreditClientDetails() {
   const creditTotal = (client.montantAvecInteret ?? client.montantTotal ?? client.montant ?? 0) as number;
   const penaltyTotal = penalties.reduce((s, p) => s + (Number(p.amount) || 0), 0);
   const paymentsTotal = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+  const remainingToPay = creditTotal - paymentsTotal + penaltyTotal;
+  const totalPaidWithPenalty = paymentsTotal + penaltyTotal;
 
   return (
     <div className="p-4">
