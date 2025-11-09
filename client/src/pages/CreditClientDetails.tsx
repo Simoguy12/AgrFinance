@@ -1,6 +1,6 @@
 import { useLocation } from "wouter";
 import { useEffect, useState } from "react";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 // Détails pour les clients de type Crédit.
 // - Affiche informations uniformes pour tous les crédits
@@ -82,11 +82,33 @@ export default function CreditClientDetails() {
   };
 
   const handleContentieux = async () => {
-    // navigate to contentieux page for this client, keeping client in localStorage
     try {
-      localStorage.setItem("selectedClient", JSON.stringify(client));
-    } catch (e) {}
-    setLocation("/contencieux");
+      // update backend status so the client is removed from Credit list and appears in Contentieux list
+      const updated = await apiRequest("PATCH", `/api/clients/${client.id}`, { status: "litigation" });
+      try {
+        localStorage.setItem("selectedClient", JSON.stringify(updated));
+      } catch (e) {}
+      // invalidate clients so lists refresh
+      try { queryClient.invalidateQueries({ queryKey: ["/api/clients"] }); } catch (e) {}
+      // navigate to contentieux page where selectedClient will be shown
+      setLocation("/contencieux");
+    } catch (e) {
+      console.error("Failed to set contentieux status", e);
+      // fallback: still navigate but keep current client in storage
+      try { localStorage.setItem("selectedClient", JSON.stringify(client)); } catch (e) {}
+      setLocation("/contencieux");
+    }
+  };
+
+  const handleReturnToActive = async () => {
+    try {
+      const updated = await apiRequest("PATCH", `/api/clients/${client.id}`, { status: "active" });
+      try { localStorage.setItem("selectedClient", JSON.stringify(updated)); } catch (e) {}
+      try { queryClient.invalidateQueries({ queryKey: ["/api/clients"] }); } catch (e) {}
+      setLocation("/credit");
+    } catch (e) {
+      console.error("Failed to return client to active", e);
+    }
   };
 
   const handleComment = () => {
@@ -127,7 +149,7 @@ export default function CreditClientDetails() {
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Pénalités</p>
-            <p className="font-semibold">{penaltyTotal.toLocaleString('fr-FR')} XAF</p>
+            <p className="font-semibold text-red-600">{penaltyTotal.toLocaleString('fr-FR')} XAF</p>
           </div>
         </div>
 
@@ -195,7 +217,11 @@ export default function CreditClientDetails() {
             </div>
           )}
 
-          <button className="bg-red-500 text-white py-2 rounded" onClick={handleContentieux}>Contentieux</button>
+          {client.status === 'litigation' ? (
+            <button className="bg-indigo-600 text-white py-2 rounded" onClick={handleReturnToActive}>Renvoyer au actif</button>
+          ) : (
+            <button className="bg-red-500 text-white py-2 rounded" onClick={handleContentieux}>Contentieux</button>
+          )}
         </div>
 
         {showPayments && (
@@ -231,7 +257,7 @@ export default function CreditClientDetails() {
                       <p className="text-sm">Pénalité</p>
                       <p className="text-xs text-muted-foreground">{new Date(p.date).toLocaleString()}</p>
                     </div>
-                    <div className="font-mono">{(p.amount||0).toLocaleString('fr-FR')} XAF</div>
+                    <div className="font-mono text-red-600">{(p.amount||0).toLocaleString('fr-FR')} XAF</div>
                   </div>
                 ))}
               </div>
