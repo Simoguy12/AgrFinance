@@ -17,6 +17,7 @@ import Contencieux from "@/pages/Contencieux";
 import Performance from "@/pages/Performance";
 import Corbeille from "@/pages/Corbeille";
 import ClientDetails from "@/pages/ClientDetails";
+import CreditClientDetails from "@/pages/CreditClientDetails";
 
 function Router() {
   return (
@@ -28,6 +29,7 @@ function Router() {
       <Route path="/add/carte-pointage" component={AddCartePointage} />
       <Route path="/profile" component={Profile} />
       <Route path="/credit" component={Credit} />
+  <Route path="/credit/client/:id" component={CreditClientDetails} />
       <Route path="/epargne" component={Epargne} />
       <Route path="/solde" component={Solde} />
       <Route path="/contencieux" component={Contencieux} />

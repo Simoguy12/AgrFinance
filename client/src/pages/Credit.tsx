@@ -121,12 +121,24 @@ export default function Credit() {
                   <div className="space-y-3">
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-base font-medium text-foreground">
-                          {client.prenom} {client.nom}
-                        </h3>
-                        <p className="text-sm font-mono text-muted-foreground mt-0.5">
-                          {client.codeCompte}
-                        </p>
+                        <button
+                          onClick={() => {
+                            try {
+                              localStorage.setItem("selectedClient", JSON.stringify(client));
+                            } catch (e) {
+                              // ignore
+                            }
+                            setLocation(`/credit/client/${client.id}`);
+                          }}
+                          className="text-left w-full"
+                        >
+                          <h3 className="text-base font-medium text-foreground">
+                            {client.prenom} {client.nom}
+                          </h3>
+                          <p className="text-sm font-mono text-muted-foreground mt-0.5">
+                            {client.codeCompte}
+                          </p>
+                        </button>
                         {client.nombreCompte && (
                           <p className="text-sm text-muted-foreground mt-1">
                             {client.nombreCompte} comptes
